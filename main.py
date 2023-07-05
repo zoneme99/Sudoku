@@ -4,10 +4,12 @@ from speed_calculator import calculate
 import time
 from itertools import permutations
 
+
 class Grid:
-    def __init__(self):
+    def __init__(self, comment=False):
         self.grid = np.zeros((9,9), dtype=int)
         self.coord = self.create_coord()
+        self.comment = comment
 
     def print_grid(self):
         return print(self.grid)
@@ -129,26 +131,27 @@ class Grid:
     
     def iterate(self, coord, index = 0):
 
-        if index == 7:
-            print("10%")
-        elif index == 15:
-            print("20%")
-        elif index == 23:
-            print("30%")    
-        elif index == 31:
-            print("40%")
-        elif index == 39:
-            print("50%")
-        elif index == 47:
-            print("60%")
-        elif index == 55:
-            print("70%")
-        elif index == 63:
-            print("80%")
-        elif index == 71:
-            print("90%")
-        elif index == 80:
-            print("100%")
+        if self.comment == True:
+            if index == 7:
+                print("10%")
+            elif index == 15:
+                print("20%")
+            elif index == 23:
+                print("30%")    
+            elif index == 31:
+                print("40%")
+            elif index == 39:
+                print("50%")
+            elif index == 47:
+                print("60%")
+            elif index == 55:
+                print("70%")
+            elif index == 63:
+                print("80%")
+            elif index == 71:
+                print("90%")
+            elif index == 80:
+                print("100%")
         
         if index > len(coord)-1:
             return True
@@ -174,33 +177,64 @@ class Grid:
             print("DONE")
             print(self.grid)
 
-    def sudoku(self, empty_boxes):
-        coord = random.shuffle(self.coord)
+    def sudoku(self, empty_boxes):  #Tar bort antalet rutor till angivet antal, undviker dubbla lösningar
+        coord = self.coord
+        random.shuffle(coord)
         numbers = []
-        solutions = 1
+        emptycoord = []
+        errors = []
         boxes = 0
+        multisolutions = False
 
         for x,y in coord:
-            number = self.grid[x][y]
+            print("test")
+            if boxes == empty_boxes:
+                break
+            numbers.append(self.grid[x][y])
+            emptycoord.append((x,y))
             self.grid[x][y] = 0
             boxes += 1
-            numbers.append(number)
-            combs = list(permutations(numbers))
+
+            if len(errors) > 0:
+            
+                combsraw = permutations(numbers)
+                combs = filter(lambda x: errors[0][0] != errors[0][1], combsraw)
+                next(combs) # Hoppar över första lösningen
+            else:
+                combs = iter(permutations(numbers))
+                next(combs) # Hoppar över första lösningen
+            try:
+                while True:
+                    tmp = next(combs)
+                    for i, number in enumerate(tmp):
+                        if self.test_subgrid(emptycoord[i], number) and self.test_axis(emptycoord[i], number):
+                            if i == len(tmp) - 1:
+                                print("Warning, double solutions")
+                                print("{}e boxen krascha det!".format(boxes))
+                                multisolutions = not multisolutions
+                        else:
+                            break
+                    if multisolutions == True:
+                        break
+            except StopIteration:
+                continue
+            if multisolutions == True:
+                self.grid[x][y] = numbers[-1]
+                emptycoord.pop()
+                numbers.pop()
+                boxes -= 1
+                multisolutions = not multisolutions
+        
+        print("Grattis ett färdigt Sudoku")
+        return self.print_grid()
+
+            
             
             
             #if boxes == empty_boxes
 
 
 
-
-
-            
-
-
-
-# Exempel på hur man kan använda klasserna
-
-# Skapa ett nytt grid
 my_grid = Grid()
 
 # Tilldela ett värde till en cell i en grids
@@ -215,7 +249,25 @@ my_grid = Grid()
 #my_grid.fill_grid()
 #my_grid.sudoku()
 
-listing = list(permutations([1,2,3,4]))
 
-for x in listing:
-    print(x)
+#perms = list(permutations(numbers))
+
+#my_grid.fill_grid()
+#my_grid.sudoku(15)
+
+my_list = [1, 2, 3, 4]
+
+# Skapa en iterator av permutationer
+perms = permutations(my_list)
+
+# Filtrera bort permutationer som börjar med 1
+errors = [[0,2],[1,3]]
+for pos, number in errors:
+        filterperms = filter(lambda x: x[pos] == number, perms)
+#Gör en rekursion för att skapa permutations
+
+# Konvertera till en lista
+filtered_perms_list = list(filterperms)
+
+# Skriv ut resultatet
+print(filtered_perms_list)
