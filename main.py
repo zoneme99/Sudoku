@@ -1,9 +1,9 @@
 import numpy as np
 import random
-from speed_calculator import calculate
 import time
-from itertools import permutations
-
+from itertools import permutations, chain
+import sys
+sys.setrecursionlimit(10000)
 
 class Grid:
     def __init__(self, comment=False):
@@ -61,7 +61,7 @@ class Grid:
         random.shuffle(counter)
         counter = iter(counter)
         return counter
-
+    
     def test_axis(self, coord, iterator):
         xcoord = coord[0]
         ycoord = coord[1]
@@ -170,8 +170,6 @@ class Grid:
         except StopIteration:
             return False
 
-
-
     def fill_grid(self):
         if self.iterate(self.coord) == True:
             print("DONE")
@@ -182,92 +180,83 @@ class Grid:
         random.shuffle(coord)
         numbers = []
         emptycoord = []
-        errors = []
-        boxes = 0
-        multisolutions = False
+        self.boxes = 0
+        self.multisolutions = False
 
         for x,y in coord:
             print("test")
-            if boxes == empty_boxes:
+            errors = []
+            if self.boxes == empty_boxes:
                 break
             numbers.append(self.grid[x][y])
-            emptycoord.append((x,y))
+            emptycoord.append([x,y])
             self.grid[x][y] = 0
-            boxes += 1
+            self.boxes += 1
 
-            if len(errors) > 0:
-            
-                combsraw = permutations(numbers)
-                combs = filter(lambda x: errors[0][0] != errors[0][1], combsraw)
-                next(combs) # Hoppar över första lösningen
-            else:
-                combs = iter(permutations(numbers))
-                next(combs) # Hoppar över första lösningen
-            try:
-                while True:
-                    tmp = next(combs)
-                    for i, number in enumerate(tmp):
-                        if self.test_subgrid(emptycoord[i], number) and self.test_axis(emptycoord[i], number):
-                            if i == len(tmp) - 1:
-                                print("Warning, double solutions")
-                                print("{}e boxen krascha det!".format(boxes))
-                                multisolutions = not multisolutions
-                        else:
-                            break
-                    if multisolutions == True:
-                        break
-            except StopIteration:
-                continue
-            if multisolutions == True:
-                self.grid[x][y] = numbers[-1]
-                emptycoord.pop()
-                numbers.pop()
-                boxes -= 1
-                multisolutions = not multisolutions
-        
+
+  
+            self.filter_newcombs(errors, emptycoord, numbers)
+
         print("Grattis ett färdigt Sudoku")
         return self.print_grid()
+    
+    def filter_newcombs(self, errors, emptycoord, numbers):
 
-            
-            
-            
-            #if boxes == empty_boxes
+                    combsraw = permutations(numbers)
+                    combs = filter(lambda x: x != tuple(numbers), combsraw) #tar bort första lösningen
+                    tic = time.perf_counter()
+                    filtered_combs = self.filter_comb(combs, emptycoord, errors) #filterar bort all onödiga kombinationer
+                    print("filter time")
+                    print(time.perf_counter() - tic)
+                    tic = time.perf_counter() 
+                    self.test_combs(filtered_combs, emptycoord) #testar kombinationerna
+                    print("test time")
+                    print(time.perf_counter() - tic)
+                    if self.multisolutions:
+                        for x, y in emptycoord:
+                            self.grid[x][y] = 0
+                        self.grid[x][y] = numbers[-1]
+                        emptycoord.pop()
+                        numbers.pop()
+                        self.boxes -= 1
+                        return None
+
+
+    def filter_comb(self, combs, emptycoord, errors):
+        for i in range(len(emptycoord)): #Testar möjliga kombinationer 
+            for perms in combs:
+                for number in perms:
+                    if not (self.test_subgrid(emptycoord[i], number) and self.test_axis(emptycoord[i], number)):
+                        errors.append([i, number])
+                        filtered_combs = (perm for perm in combs if all(perm[pos] != number for pos, number in errors)) #SEEEEEEEEEEEEEEEEEEEEEEEEEEEE ATTTTTTTTTTTTTTTTTTT DEN FUNKAR
+                        return self.filter_comb(filtered_combs, emptycoord, errors)
+        return combs
+
+
+                
+
+    def test_combs(self, filtered_combs, emptycoord):
+        for comb in filtered_combs: #Testar möjliga kombinationer
+            for i, number in enumerate(comb):
+                if self.test_subgrid(emptycoord[i], number) and self.test_axis(emptycoord[i], number): # KOMMER ALDRIG IN
+                    self.grid[emptycoord[i][0]][emptycoord[i][1]] = number
+                    print("INSERT")
+                    if i == len(comb) - 1:
+                        print("Warning, double solutions")
+                        print("{}e boxen krascha det!".format(self.boxes))
+                        self.multisolutions = not self.multisolutions
+                else:
+                    for x, y in emptycoord:
+                        self.grid[x][y] = 0
+                    break
+            if self.multisolutions:
+                break
+        
 
 
 
 my_grid = Grid()
 
-# Tilldela ett värde till en cell i en grids
-#my_grid.grid[8][8] = 5
+my_grid.fill_grid()
+my_grid.sudoku(8)
 
-#print(my_grid.grid[my_grid.coord[0]])
-#print(my_grid.coord[0][0])
-#print(my_grid.test_subgrid([8,7], 5))
-#my_grid.print_grid()
-#print(calculate(my_grid.fill_grid)) 
-
-#my_grid.fill_grid()
-#my_grid.sudoku()
-
-
-#perms = list(permutations(numbers))
-
-#my_grid.fill_grid()
-#my_grid.sudoku(15)
-
-my_list = [1, 2, 3, 4]
-
-# Skapa en iterator av permutationer
-perms = permutations(my_list)
-
-# Filtrera bort permutationer som börjar med 1
-errors = [[0,2],[1,3]]
-for pos, number in errors:
-        filterperms = filter(lambda x: x[pos] == number, perms)
-#Gör en rekursion för att skapa permutations
-
-# Konvertera till en lista
-filtered_perms_list = list(filterperms)
-
-# Skriv ut resultatet
-print(filtered_perms_list)
